@@ -1,0 +1,13 @@
+{
+    "title": "图片导导 Lite",
+    "subtitle": "Photoshop 智能导入助手",
+    "wait": "等待启动监控...",
+    "start": "开启自动监控",
+    "stop": "停止自动监控",
+    "listening": "⚡ 正在监听剪贴板...",
+    "processing": "⚡ 正在同步: ",
+    "footer": "Via 公众号：爱吃馍",
+    "success": "处理完成: ",
+    "layerName": "未命名",
+    "filePrefix": "Via公众号：爱吃馍" 
+}

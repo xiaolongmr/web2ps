@@ -1,0 +1,13 @@
+{
+    "title": "Importer Lite",
+    "subtitle": "PS Smart Assistant",
+    "wait": "Waiting to start...",
+    "start": "Start Monitoring",
+    "stop": "Stop Monitoring",
+    "listening": "Listening to clipboard...",
+    "processing": "⚡ Syncing: ",
+    "footer": "Via: AiChiMo",
+    "success": "Processed: ",
+    "layerName": "Unnamed",
+    "filePrefix": "Via_AiChiMo"
+}

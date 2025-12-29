@@ -1,0 +1,65 @@
+{
+  "id": "com.simple.importer.v5.final",
+  "name": "图片导导",
+  "version": "1.1.4",
+  "main": "index.html",
+  "manifestVersion": 5,
+  "host": {
+    "app": "PS",
+    "minVersion": "23.0.0"
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "importerPanel",
+      "label": {
+        "default": "Importer",
+        "zh-CN": "图片导导",
+        "zh-TW": "圖片導導"
+      },
+      "minimumSize": { "width": 230, "height": 300 },
+      "maximumSize": { "width": 300, "height": 600 },
+      "preferredDockedSize": { "width": 230, "height": 300 },
+      "preferredFloatingSize": { "width": 230, "height": 300 },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon_panel.png",
+          "scale": [ 1 ],
+          "theme": [ "all" ]
+        },
+        {
+          "width": 46,
+          "height": 46,
+          "path": "icons/icon_panel@2x.png",
+          "scale": [ 2 ],
+          "theme": [ "all" ]
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "width": 48,
+      "height": 48,
+      "path": "icons/icon_plugin.png",
+      "scale": [ 1 ],
+      "theme": [ "all" ],
+      "species": [ "pluginList" ]
+    },
+    {
+      "width": 96,
+      "height": 96,
+      "path": "icons/icon_plugin@2x.png",
+      "scale": [ 2 ],
+      "theme": [ "all" ],
+      "species": [ "pluginList" ]
+    }
+  ],
+  "requiredPermissions": {
+    "clipboard": "read",
+    "network": { "domains": "all" },
+    "localFileSystem": "fullAccess"
+  }
+}
