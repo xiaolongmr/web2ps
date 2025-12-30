@@ -40,10 +40,14 @@
         try {
             cleanUrl = new URL(cleanUrl, window.location.href).href;
         } catch (e) { console.error(e); }
-
+    
         if (cleanUrl.includes("gd-filems.dancf.com")) return cleanUrl.split('?')[0];
         // B站去除参数
         if (cleanUrl.includes(".hdslb.com")) return cleanUrl.split('@')[0];
+        // 京东图片去除.avif后缀
+        if (cleanUrl.includes("360buyimg.com") && cleanUrl.endsWith(".avif")) {
+            return cleanUrl.slice(0, -5); // 移除最后5个字符 ".avif"
+        }
         
         return cleanUrl;
     }
