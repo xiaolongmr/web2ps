@@ -1,7 +1,7 @@
 {
   "id": "com.simple.importer.v5.final",
   "name": "图片导导 Lite",
-  "version": "1.1.4",
+  "version": "0.1",
   "main": "index.html",
   "manifestVersion": 5,
   "host": {
@@ -25,36 +25,33 @@
         {
           "width": 23,
           "height": 23,
-          "path": "icons/icon_panel.png",
-          "scale": [ 1 ],
-          "theme": [ "all" ]
-        },
-        {
-          "width": 46,
-          "height": 46,
-          "path": "icons/icon_panel@2x.png",
-          "scale": [ 2 ],
-          "theme": [ "all" ]
+          "path": "icons/pluginIcon.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "all"
+          ]
         }
       ]
     }
   ],
   "icons": [
     {
-      "width": 48,
-      "height": 48,
-      "path": "icons/icon_plugin.png",
-      "scale": [ 1 ],
-      "theme": [ "all" ],
-      "species": [ "pluginList" ]
-    },
-    {
-      "width": 96,
-      "height": 96,
-      "path": "icons/icon_plugin@2x.png",
-      "scale": [ 2 ],
-      "theme": [ "all" ],
-      "species": [ "pluginList" ]
+      "width": 23,
+      "height": 23,
+      "path": "icons/pluginIcon.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "all"
+      ],
+      "species": [
+        "pluginList"
+      ]
     }
   ],
   "requiredPermissions": {
