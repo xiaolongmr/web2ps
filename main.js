@@ -16,13 +16,15 @@
     // ==========================================
     async function autoImportTask(url, layerName, forceNewDoc = false) {
         try {
-            let fileExt = ".png";
+            let fileExt = ".jpg"; // 默认使用jpg格式
             const isSVG = url.toLowerCase().includes(".svg") || url.startsWith("data:image/svg+xml");
             
             if (isSVG) {
                 fileExt = ".svg";
             } else if (!url.startsWith("data:") && url.toLowerCase().includes("webp")) {
                 fileExt = ".webp";
+            } else if (!url.startsWith("data:") && url.toLowerCase().includes(".png")) {
+                fileExt = ".png";
             }
 
             const response = await fetch(url);

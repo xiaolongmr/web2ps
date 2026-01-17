@@ -49,6 +49,21 @@
             return cleanUrl.slice(0, -5); // 移除最后5个字符 ".avif"
         }
 
+        // 淘宝图片去除后缀参数
+        if (cleanUrl.includes("alicdn.com")) {
+            // 支持多种图片格式：jpg, jpeg, png, webp, gif
+            const formats = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+            
+            for (const format of formats) {
+                const formatIndex = cleanUrl.indexOf(format);
+                if (formatIndex !== -1) {
+                    // 保留原格式后缀并添加 _.webp
+                    cleanUrl = cleanUrl.substring(0, formatIndex + format.length) + '_.webp';
+                    break;
+                }
+            }
+        }
+
         return cleanUrl;
     }
 
