@@ -32,7 +32,38 @@
     // ==========================================
     // 2. URL 处理
     // ==========================================
-    function processImageUrl(url) {
+    
+    // 检查URL是否包含图片格式后缀
+    function hasImageExtension(url) {
+        if (!url) return false;
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg', '.ico', '.tiff', '.tif'];
+        const urlLower = url.toLowerCase();
+        return imageExtensions.some(ext => urlLower.includes(ext));
+    }
+
+    // 将图片URL转换为base64
+    async function urlToBase64(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result;
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Base64转换失败:', error);
+            return null;
+        }
+    }
+
+    async function processImageUrl(url) {
         if (!url) return null;
         // 移除首尾引号、空白、回车符 (微信图片有时会有换行)
         let cleanUrl = url.replace(/^['"\s]+|['"\s]+$/g, '').trim();
@@ -40,6 +71,15 @@
         try {
             cleanUrl = new URL(cleanUrl, window.location.href).href;
         } catch (e) { console.error(e); }
+
+        // 检查URL是否包含图片格式后缀
+        if (!hasImageExtension(cleanUrl)) {
+            console.log('检测到无图片格式后缀的URL，尝试转换为base64:', cleanUrl);
+            const base64Data = await urlToBase64(cleanUrl);
+            if (base64Data) {
+                return base64Data;
+            }
+        }
 
         if (cleanUrl.includes("gd-filems.dancf.com")) return cleanUrl.split('?')[0];
         // B站去除参数
@@ -247,7 +287,7 @@
     const eventsToBlock = ['click', 'mousedown', 'mouseup', 'pointerdown'];
 
     eventsToBlock.forEach(eventName => {
-        document.addEventListener(eventName, function(e) {
+        document.addEventListener(eventName, async function(e) {
             if (e.ctrlKey || e.metaKey) {
                 // 优先从点击目标开始找
                 const result = findTargetImage(e.target);
@@ -258,37 +298,54 @@
                     e.stopImmediatePropagation();
 
                     if (eventName === 'click') {
-                        const finalUrl = processImageUrl(result.url);
+                        try {
+                            const finalUrl = await processImageUrl(result.url);
 
-                        if (finalUrl) {
-                            let finalName = findBestName(result.element);
-                            if(finalName === "馍馍就是人间美味") finalName = findBestName(e.target);
+                            if (finalUrl) {
+                                let finalName = findBestName(result.element);
+                                if(finalName === "馍馍就是人间美味") finalName = findBestName(e.target);
 
-                            const isNewDocMode = e.altKey;
+                                const isNewDocMode = e.altKey;
 
-                            // UI 反馈
-                            const borderColor = isNewDocMode ? '#d13438' : '#0078d4';
-                            fx.style.border = `4px solid ${borderColor}`;
-                            fx.style.boxShadow = `0 0 15px ${isNewDocMode ? 'rgba(209,52,56,0.6)' : 'rgba(0,120,212,0.6)'}`;
+                                // UI 反馈
+                                const borderColor = isNewDocMode ? '#d13438' : '#0078d4';
+                                fx.style.border = `4px solid ${borderColor}`;
+                                fx.style.boxShadow = `0 0 15px ${isNewDocMode ? 'rgba(209,52,56,0.6)' : 'rgba(0,120,212,0.6)'}`;
 
-                            const rect = result.element.getBoundingClientRect();
-                            Object.assign(fx.style, {
-                                left: rect.left + 'px', top: rect.top + 'px',
-                                width: rect.width + 'px', height: rect.height + 'px',
-                                display: 'block', opacity: '1', transform: 'scale(1)'
-                            });
-                            setTimeout(() => { fx.style.opacity = '0'; fx.style.transform = 'scale(1.05)'; }, 200);
+                                const rect = result.element.getBoundingClientRect();
+                                Object.assign(fx.style, {
+                                    left: rect.left + 'px', top: rect.top + 'px',
+                                    width: rect.width + 'px', height: rect.height + 'px',
+                                    display: 'block', opacity: '1', transform: 'scale(1)'
+                                });
+                                setTimeout(() => { fx.style.opacity = '0'; fx.style.transform = 'scale(1.05)'; }, 200);
 
-                            // 写入剪贴板
-                            let clipboardStr = `PS_IMPORTER:${finalUrl}|||${finalName}`;
-                            if (isNewDocMode) clipboardStr += "|||NEW_DOC";
+                                // 写入剪贴板
+                                let clipboardStr = `PS_IMPORTER:${finalUrl}|||${finalName}`;
+                                if (isNewDocMode) clipboardStr += "|||NEW_DOC";
 
-                            GM_setClipboard(clipboardStr);
+                                GM_setClipboard(clipboardStr);
 
+                                // 显示简短的URL预览（如果是base64则显示特殊标识）
+                                let displayUrl = finalUrl;
+                                if (finalUrl.startsWith('data:')) {
+                                    displayUrl = '[Base64图片数据]';
+                                } else if (finalUrl.length > 50) {
+                                    displayUrl = "..." + finalUrl.slice(-40);
+                                }
+
+                                GM_notification({
+                                    text: displayUrl,
+                                    title: `[${isNewDocMode ? "新建" : "置入"}] ${finalName}`,
+                                    timeout: 1000
+                                });
+                            }
+                        } catch (error) {
+                            console.error('图片处理失败:', error);
                             GM_notification({
-                                text: finalUrl.length > 50 ? "..." + finalUrl.slice(-40) : finalUrl,
-                                title: `[${isNewDocMode ? "新建" : "置入"}] ${finalName}`,
-                                timeout: 1000
+                                text: '图片处理失败，请检查网络连接',
+                                title: '错误',
+                                timeout: 2000
                             });
                         }
                     }
