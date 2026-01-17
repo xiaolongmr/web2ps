@@ -1,7 +1,7 @@
 {
   "id": "com.simple.importer.v5.final",
   "name": "图片导导 Lite",
-  "version": "0.1",
+  "version": "0.1.3",
   "main": "main.html",
   "manifestVersion": 5,
   "host": {
@@ -59,4 +59,5 @@
     "network": { "domains": "all" },
     "localFileSystem": "fullAccess"
   }
+
 }
