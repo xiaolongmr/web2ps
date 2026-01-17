@@ -63,99 +63,132 @@
         }
     }
 
+    /**
+     * 处理京东图片URL优化
+     * @param {string} url - 原始URL
+     * @returns {string} 优化后的URL
+     */
+    function optimizeJdUrl(url) {
+        let cleanUrl = url;
+        // 移除.dpg后缀
+        if (cleanUrl.endsWith(".dpg")) {
+            cleanUrl = cleanUrl.slice(0, -4);
+        }
+        // 移除.avif后缀
+        if (cleanUrl.endsWith(".avif")) {
+            cleanUrl = cleanUrl.slice(0, -5);
+        }
+        
+        // 优化尺寸参数，获取最大尺寸图片
+        const sizeMatch = cleanUrl.match(/\/s(\d+)x(\d+)_/);
+        if (sizeMatch) {
+            // 替换为最大尺寸 s3000x3000
+            cleanUrl = cleanUrl.replace(/\/s\d+x\d+_/, '/s3000x3000_');
+        } else {
+            // 如果没有尺寸参数，添加s3000x3000_参数
+            const jfsIndex = cleanUrl.indexOf('/jfs/');
+            if (jfsIndex !== -1) {
+                cleanUrl = cleanUrl.substring(0, jfsIndex) + '/s3000x3000_jfs/' + cleanUrl.substring(jfsIndex + 5);
+            }
+        }
+        return cleanUrl;
+    }
+
+    /**
+     * 处理淘宝图片URL优化
+     * @param {string} url - 原始URL
+     * @returns {string} 优化后的URL
+     */
+    function optimizeTaobaoUrl(url) {
+        let cleanUrl = url;
+        const formats = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+        
+        for (const format of formats) {
+            const formatIndex = cleanUrl.indexOf(format);
+            if (formatIndex !== -1) {
+                // 保留原格式后缀并添加 _.webp
+                cleanUrl = cleanUrl.substring(0, formatIndex + format.length) + '_.webp';
+                break;
+            }
+        }
+        return cleanUrl;
+    }
+
+    /**
+     * 处理亚马逊图片URL优化
+     * @param {string} url - 原始URL
+     * @returns {string} 优化后的URL
+     */
+    function optimizeAmazonUrl(url) {
+        const originalUrl = url;
+        let cleanUrl = url;
+        
+        // 找到最后一个斜杠的位置
+        const lastSlashIndex = cleanUrl.lastIndexOf('/');
+        if (lastSlashIndex !== -1) {
+            // 获取斜杠后的部分
+            const afterSlash = cleanUrl.substring(lastSlashIndex + 1);
+            
+            // 检查是否包含两个点，且两个点之间有内容
+            const firstDotIndex = afterSlash.indexOf('.');
+            if (firstDotIndex !== -1) {
+                // 找到格式后缀前的最后一个点
+                const formats = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+                for (const format of formats) {
+                    const formatIndex = afterSlash.indexOf(format);
+                    if (formatIndex !== -1 && formatIndex > firstDotIndex) {
+                        // 找到格式后缀前的最后一个点
+                        const lastDotBeforeFormat = afterSlash.lastIndexOf('.', formatIndex - 1);
+                        if (lastDotBeforeFormat !== -1 && lastDotBeforeFormat >= firstDotIndex) {
+                            // 移除第一个点和最后一个点之间的所有内容
+                            const beforeFirstDot = afterSlash.substring(0, firstDotIndex);
+                            // 只保留格式后缀，移除后面的查询参数
+                            cleanUrl = cleanUrl.substring(0, lastSlashIndex + 1) + beforeFirstDot + format;
+                            console.log("亚马逊图片处理:", originalUrl, "->", cleanUrl);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return cleanUrl;
+    }
+
+    /**
+     * 处理图片URL，优化各种平台的特殊格式
+     * @param {string} url - 原始图片URL
+     * @returns {string|null} 处理后的URL或base64数据
+     */
     async function processImageUrl(url) {
         if (!url) return null;
+        
         // 移除首尾引号、空白、回车符 (微信图片有时会有换行)
         let cleanUrl = url.replace(/^['"\s]+|['"\s]+$/g, '').trim();
 
         try {
             cleanUrl = new URL(cleanUrl, window.location.href).href;
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error('URL解析失败:', e);
+            return null;
+        }
 
-        // 检查URL是否包含图片格式后缀
+        // 检查URL是否包含图片格式后缀，如果没有则转换为base64
         if (!hasImageExtension(cleanUrl)) {
             console.log('检测到无图片格式后缀的URL，尝试转换为base64:', cleanUrl);
             const base64Data = await urlToBase64(cleanUrl);
             if (base64Data) {
                 return base64Data;
             }
+            return cleanUrl; // 转换失败返回原始URL
         }
 
+        // 各平台URL优化处理
         if (cleanUrl.includes("gd-filems.dancf.com")) return cleanUrl.split('?')[0];
-        // B站去除参数
         if (cleanUrl.includes(".hdslb.com")) return cleanUrl.split('@')[0];
-        // 京东图片处理：去除.avif/.dpg后缀并优化尺寸参数
-        if (cleanUrl.includes("360buyimg.com")) {
-            // 移除.dpg后缀
-            if (cleanUrl.endsWith(".dpg")) {
-                cleanUrl = cleanUrl.slice(0, -4); // 移除最后4个字符 ".dpg"
-            }
-            // 移除.avif后缀
-            if (cleanUrl.endsWith(".avif")) {
-                cleanUrl = cleanUrl.slice(0, -5); // 移除最后5个字符 ".avif"
-            }
-            
-            // 优化尺寸参数，获取最大尺寸图片
-            const sizeMatch = cleanUrl.match(/\/s(\d+)x(\d+)_/);
-            if (sizeMatch) {
-                // 替换为最大尺寸 s3000x3000
-                cleanUrl = cleanUrl.replace(/\/s\d+x\d+_/, '/s3000x3000_');
-            } else {
-                // 如果没有尺寸参数，添加s3000x3000_参数
-                // 例如：/n1/jfs/... -> /n1/s3000x3000_jfs/...
-                const jfsIndex = cleanUrl.indexOf('/jfs/');
-                if (jfsIndex !== -1) {
-                    cleanUrl = cleanUrl.substring(0, jfsIndex) + '/s3000x3000_jfs/' + cleanUrl.substring(jfsIndex + 5);
-                }
-            }
-        }
-        // 淘宝图片去除后缀参数
-        if (cleanUrl.includes("alicdn.com")) {
-            // 支持多种图片格式：jpg, jpeg, png, webp, gif
-            const formats = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-            
-            for (const format of formats) {
-                const formatIndex = cleanUrl.indexOf(format);
-                if (formatIndex !== -1) {
-                    // 保留原格式后缀并添加 _.webp
-                    cleanUrl = cleanUrl.substring(0, formatIndex + format.length) + '_.webp';
-                    break;
-                }
-            }
-        }
-
-        // 亚马逊图片去除尺寸参数
+        if (cleanUrl.includes("360buyimg.com")) return optimizeJdUrl(cleanUrl);
+        if (cleanUrl.includes("alicdn.com")) return optimizeTaobaoUrl(cleanUrl);
         if (cleanUrl.includes("amazon.com") && (cleanUrl.includes("/images/I/") || cleanUrl.includes("/images/S/"))) {
-            const originalUrl = cleanUrl; // 保存原始URL用于调试
-            
-            // 找到最后一个斜杠的位置
-            const lastSlashIndex = cleanUrl.lastIndexOf('/');
-            if (lastSlashIndex !== -1) {
-                // 获取斜杠后的部分
-                const afterSlash = cleanUrl.substring(lastSlashIndex + 1);
-                
-                // 检查是否包含两个点，且两个点之间有内容
-                const firstDotIndex = afterSlash.indexOf('.');
-                if (firstDotIndex !== -1) {
-                    // 找到格式后缀前的最后一个点
-                    const formats = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-                    for (const format of formats) {
-                        const formatIndex = afterSlash.indexOf(format);
-                        if (formatIndex !== -1 && formatIndex > firstDotIndex) {
-                            // 找到格式后缀前的最后一个点
-                            const lastDotBeforeFormat = afterSlash.lastIndexOf('.', formatIndex - 1);
-                            if (lastDotBeforeFormat !== -1 && lastDotBeforeFormat >= firstDotIndex) {
-                                // 移除第一个点和最后一个点之间的所有内容
-                                const beforeFirstDot = afterSlash.substring(0, firstDotIndex);
-                                // 只保留格式后缀，移除后面的查询参数
-                                cleanUrl = cleanUrl.substring(0, lastSlashIndex + 1) + beforeFirstDot + format;
-                                console.log("亚马逊图片处理:", originalUrl, "->", cleanUrl);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+            return optimizeAmazonUrl(cleanUrl);
         }
 
         return cleanUrl;

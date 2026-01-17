@@ -69,7 +69,26 @@
                 const st = document.getElementById("st");
                 if (st) st.innerText = `${i18nMain.queueProcessing}${truncateText(currentTask.layerName)}`;
                 
-                await autoImportTask(currentTask.url, currentTask.layerName, currentTask.forceNewDoc);
+                // 添加重试机制
+                let retryCount = 0;
+                const maxRetries = 2;
+                let success = false;
+                
+                while (retryCount <= maxRetries && !success) {
+                    try {
+                        await autoImportTask(currentTask.url, currentTask.layerName, currentTask.forceNewDoc);
+                        success = true;
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount > maxRetries) {
+                            throw error; // 达到最大重试次数，抛出错误
+                        }
+                        console.log(`任务重试 ${retryCount}/${maxRetries}: ${currentTask.layerName}`);
+                        
+                        // 等待一段时间后重试
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                    }
+                }
                 
                 // 标记任务完成
                 currentTask.status = 'completed';
@@ -225,42 +244,61 @@
         
         if (window.updateUIState) window.updateUIState(true); // 开灯
 
-        // 2. 开始循环
-        while (isAutoRunning) {
-            // 每次循环开始前，再次检查标志位（防止延迟）
-            if (!isAutoRunning) break;
+        // 2. 开始循环（智能节流：有队列任务时降低频率）
+            let consecutiveEmptyChecks = 0;
+            
+            while (isAutoRunning) {
+                // 每次循环开始前，再次检查标志位（防止延迟）
+                if (!isAutoRunning) break;
 
-            try {
-                const clipboardData = await navigator.clipboard.readText();
-                const rawString = typeof clipboardData === "string" ? clipboardData : JSON.stringify(clipboardData);
+                try {
+                    const clipboardData = await navigator.clipboard.readText();
+                    const rawString = typeof clipboardData === "string" ? clipboardData : JSON.stringify(clipboardData);
 
-                if (rawString && rawString.includes("PS_IMPORTER:")) {
-                    let contentRaw = rawString.split("PS_IMPORTER:")[1]
-                                            .split('"}')[0]
-                                            .replace(/\\/g, "")
-                                            .trim();
+                    if (rawString && rawString.includes("PS_IMPORTER:")) {
+                        let contentRaw = rawString.split("PS_IMPORTER:")[1]
+                                                .split('"}')[0]
+                                                .replace(/\\/g, "")
+                                                .trim();
 
-                    let parts = contentRaw.split("|||");
-                    let currentUrl = parts[0];
-                    let currentName = (parts.length > 1 && parts[1].trim() !== "") ? parts[1] : i18nMain.layerName;
-                    let isForceNew = (parts.length > 2 && parts[2] === "NEW_DOC");
+                        let parts = contentRaw.split("|||");
+                        let currentUrl = parts[0];
+                        let currentName = (parts.length > 1 && parts[1].trim() !== "") ? parts[1] : i18nMain.layerName;
+                        let isForceNew = (parts.length > 2 && parts[2] === "NEW_DOC");
 
-                    if (currentUrl !== lastUrl) {
-                        lastUrl = currentUrl; 
-                        
-                        // 使用队列系统而不是直接处理
-                        addToQueue(currentUrl, currentName, isForceNew);
-                        
-                        // 显示队列状态
-                        if (st) st.innerText = `${i18nMain.queueAdded}${truncateText(currentName)}`; 
+                        if (currentUrl !== lastUrl) {
+                            lastUrl = currentUrl; 
+                            
+                            // 使用队列系统而不是直接处理
+                            addToQueue(currentUrl, currentName, isForceNew);
+                            
+                            // 显示队列状态
+                            if (st) st.innerText = `${i18nMain.queueAdded}${truncateText(currentName)}`; 
+                            
+                            // 重置连续空检查计数
+                            consecutiveEmptyChecks = 0;
+                        }
+                    } else {
+                        // 没有检测到有效内容，增加空检查计数
+                        consecutiveEmptyChecks++;
                     }
+                } catch (err) {
+                    // ignore
                 }
-            } catch (err) {
-                // ignore
+                
+                // 智能延时：有队列任务时降低频率，无任务时提高频率
+                let delayTime = 800; // 默认延时
+                
+                if (downloadQueue.length > 0) {
+                    // 有队列任务时，降低监听频率（减少CPU占用）
+                    delayTime = 1500;
+                } else if (consecutiveEmptyChecks > 5) {
+                    // 连续多次空检查后，降低频率（节能模式）
+                    delayTime = 2000;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, delayTime));
             }
-            // 延时 800ms
-            await new Promise(resolve => setTimeout(resolve, 800));
-        }
     }
 
     // 绑定按钮事件
