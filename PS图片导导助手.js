@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS图片导导助手
 // @namespace    http://tampermonkey.net/
-// @version      0.1.1
+// @version      0.1.2
 // @description  获取网站的图片并发送给PS，需搭配PS插件图片导导使用
 // @author       爱吃馍的小张，公众号：爱吃馍
 // @match        *://*/*
@@ -340,9 +340,25 @@
     }
 
     // ==========================================
-    // 5. 事件监听
+    // 5. 事件监听 (Safari兼容性优化)
     // ==========================================
-    const eventsToBlock = ['click', 'mousedown'];
+    
+    // 检测浏览器类型
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isMac = navigator.platform.toLowerCase().includes('mac');
+    
+    // 调试信息
+    console.log('浏览器检测结果:', {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        isSafari: isSafari,
+        isMac: isMac,
+        hasGM_setClipboard: typeof GM_setClipboard !== 'undefined',
+        hasClipboardAPI: typeof navigator.clipboard !== 'undefined'
+    });
+    
+    // Safari需要更简单的事件处理
+    const eventsToBlock = isSafari ? ['click'] : ['click', 'mousedown'];
 
     eventsToBlock.forEach(eventName => {
         document.addEventListener(eventName, async function(e) {
@@ -351,10 +367,11 @@
                 const result = findTargetImage(e.target);
 
                 if (result) {
-                    // 在Mac上可能需要更宽松的事件处理
-                    if (navigator.platform.toLowerCase().includes('mac')) {
-                        // Mac上只阻止默认行为，不阻止传播
+                    // Safari和Mac需要特殊的事件处理
+                    if (isSafari || isMac) {
+                        // Safari/Mac上采用最宽松的处理
                         e.preventDefault();
+                        console.log('Safari/Mac事件处理: 检测到图片点击');
                     } else {
                         // Windows上保持原有严格处理
                         e.preventDefault();
@@ -393,11 +410,26 @@
                                     GM_setClipboard(clipboardStr);
                                 } catch (error) {
                                     console.error('剪贴板写入失败:', error);
-                                    // Mac上尝试备用方法
-                                    if (navigator.platform.toLowerCase().includes('mac')) {
+                                    
+                                    // Safari专用剪贴板处理
+                                    if (isSafari) {
                                         try {
-                                            // 尝试使用navigator.clipboard作为备用
+                                            // Safari可能需要使用execCommand作为备用
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = clipboardStr;
+                                            document.body.appendChild(textArea);
+                                            textArea.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            console.log('Safari剪贴板写入成功 (execCommand)');
+                                        } catch (safariError) {
+                                            console.error('Safari剪贴板方法失败:', safariError);
+                                        }
+                                    } else if (isMac) {
+                                        // Mac上尝试使用navigator.clipboard作为备用
+                                        try {
                                             await navigator.clipboard.writeText(clipboardStr);
+                                            console.log('Mac剪贴板写入成功 (navigator.clipboard)');
                                         } catch (clipError) {
                                             console.error('备用剪贴板方法也失败:', clipError);
                                         }
