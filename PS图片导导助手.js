@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS图片导导助手
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  获取网站的图片并发送给PS，需搭配PS插件图片导导使用
 // @author       爱吃馍的小张，公众号：爱吃馍
 // @match        *://*/*
@@ -342,7 +342,7 @@
     // ==========================================
     // 5. 事件监听
     // ==========================================
-    const eventsToBlock = ['click', 'mousedown', 'mouseup', 'pointerdown'];
+    const eventsToBlock = ['click', 'mousedown'];
 
     eventsToBlock.forEach(eventName => {
         document.addEventListener(eventName, async function(e) {
@@ -351,9 +351,16 @@
                 const result = findTargetImage(e.target);
 
                 if (result) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
+                    // 在Mac上可能需要更宽松的事件处理
+                    if (navigator.platform.toLowerCase().includes('mac')) {
+                        // Mac上只阻止默认行为，不阻止传播
+                        e.preventDefault();
+                    } else {
+                        // Windows上保持原有严格处理
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    }
 
                     if (eventName === 'click') {
                         try {
@@ -382,7 +389,20 @@
                                 let clipboardStr = `PS_IMPORTER:${finalUrl}|||${finalName}`;
                                 if (isNewDocMode) clipboardStr += "|||NEW_DOC";
 
-                                GM_setClipboard(clipboardStr);
+                                try {
+                                    GM_setClipboard(clipboardStr);
+                                } catch (error) {
+                                    console.error('剪贴板写入失败:', error);
+                                    // Mac上尝试备用方法
+                                    if (navigator.platform.toLowerCase().includes('mac')) {
+                                        try {
+                                            // 尝试使用navigator.clipboard作为备用
+                                            await navigator.clipboard.writeText(clipboardStr);
+                                        } catch (clipError) {
+                                            console.error('备用剪贴板方法也失败:', clipError);
+                                        }
+                                    }
+                                }
 
                                 // 显示简短的URL预览（如果是base64则显示特殊标识）
                                 let displayUrl = finalUrl;
